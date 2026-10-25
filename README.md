@@ -1,72 +1,72 @@
-# Online Restaurant
+# Restaurante On-line
 
-A first-version online restaurant system for browsing a menu, placing delivery or pickup orders, and letting restaurant staff manage dishes and order progress.
+Sistema inicial de restaurante on-line para consultar o cardápio, fazer pedidos para entrega ou retirada e permitir que a equipe do restaurante administre pratos e acompanhe o andamento dos pedidos.
 
-This README combines the project flow and initial requirements from the group presentation with the backend routes currently implemented in `backend/index.js`. It distinguishes features in the code from planned account permissions so the documentation does not imply that authentication already exists.
+Este documento reúne o fluxo e os requisitos apresentados no arquivo do projeto com as rotas que já existem em `backend/index.js`. Ele diferencia o que o código já oferece do que ainda depende de telas, contas de acesso ou permissões.
 
-## Project goals
+## Objetivos do projeto
 
-The system aims to move an order through this flow:
+O sistema deve conduzir o pedido pelas seguintes etapas:
 
-1. A visitor views dishes that are available.
-2. The customer registers their name, telephone number, and address.
-3. The customer chooses dishes and quantities, then selects delivery or pickup.
-4. The backend saves the order and all its items in SQLite as one transaction.
-5. Restaurant staff view the order, its customer, dishes, and quantities.
-6. Staff update the order status, and the customer checks the status using their customer ID.
+1. O visitante consulta os pratos disponíveis.
+2. O cliente informa nome, telefone e endereço.
+3. O cliente escolhe pratos e quantidades e seleciona entrega ou retirada.
+4. A API grava o pedido e todos os itens no SQLite em uma única transação.
+5. A equipe do restaurante consulta o pedido, o cliente, os pratos e as quantidades.
+6. A equipe atualiza o status, e o cliente acompanha o andamento usando seu identificador.
 
-The presentation describes a web front end in React, an API in Node.js and Express, and SQLite accessed through Sequelize. The current repository contains the backend implementation; a React front end is not included here.
+A apresentação propõe uma interface web em React, uma API em Node.js e Express e um banco SQLite acessado pelo Sequelize. Este repositório contém a implementação do servidor; a interface em React ainda não está incluída.
 
-## User stories and functionality
+## Histórias de usuário e funcionalidades
 
-“Eu posso” means “I can.” The table describes the intended roles and what the current API provides for each one.
+“Eu posso” descreve uma ação que cada tipo de usuário espera realizar. A coluna de situação informa o que a API atual realmente oferece.
 
-| User type | User story / Eu posso | Backend functionality | API route(s) | Current state |
+| Tipo de usuário | História de usuário / Eu posso | Funcionalidade no servidor | Rota(s) da API | Situação atual |
 |---|---|---|---|---|
-| Visitor | I can browse the menu and see dish names, descriptions, and prices. | Lists available dishes; reads a dish by ID. | `GET /pratos`, `GET /pratos/:id` | Implemented. `GET /pratos` hides unavailable dishes by default. |
-| Visitor | I can create a customer record before checkout. | Saves name, telephone, and address. | `POST /clientes` | Implemented as a database record; there is no password or login. |
-| Visitor / Registered Client | I can place an order with one or more dishes and quantities. | Validates the customer, dish availability, fulfillment type, and quantities; saves the order and items together in a transaction. | `POST /pedidos` | Implemented. The request needs an existing `id_cliente`. |
-| Visitor / Registered Client | I can choose delivery or pickup for an order. | Saves `tipo_entrega` as `entrega` or `retirada`. | `POST /pedidos` | Implemented. A delivery uses the address saved on the customer record. |
-| Registered Client | I can view my saved contact and delivery details. | Reads and updates a customer record by ID. | `GET /clientes/:id`, `PUT /clientes/:id` | Implemented by ID. Identity is not verified. |
-| Registered Client | I can see my order history and follow order status. | Lists orders for a customer ID, newest first, with dishes and quantities. | `GET /clientes/:id/pedidos` | Implemented by ID. There is no login check to ensure the caller owns that ID. |
-| Registered Client | I can cancel an order. | Sets the order status to `cancelado` and preserves its order history. | `DELETE /pedidos/:id` | Implemented. Despite the HTTP method name, this route cancels rather than erases the order. |
-| Restaurant Owner / Staff | I can add, edit, and remove dishes from the menu. | Dish CRUD; availability can be changed to hide a dish from the public menu. | `POST /pratos`, `GET /pratos?todos=true`, `PUT /pratos/:id`, `DELETE /pratos/:id` | Implemented. A dish referenced by order history cannot be deleted; mark it unavailable instead. |
-| Restaurant Owner / Staff | I can view incoming orders with customer, dish, and quantity details. | Lists orders with associated customer and item/dish records. | `GET /pedidos`, `GET /pedidos/:id` | Implemented. The routes are currently public and have no staff permission check. |
-| Restaurant Owner / Staff | I can update an order's progress. | Changes the status to one of the allowed values. | `PUT /pedidos/:id` | Implemented. Valid values are listed in [Order statuses](#order-statuses). |
-| Restaurant Owner / Staff | I can review or correct order items. | Lists, reads, adds, updates, or removes an order line. | `/itens-pedido` routes | Implemented as CRUD endpoints. |
+| Visitante | Eu posso consultar o cardápio e ver nome, descrição e preço dos pratos. | Lista pratos disponíveis e consulta um prato pelo identificador. | `GET /pratos`, `GET /pratos/:id` | Implementado. A listagem padrão oculta pratos indisponíveis. |
+| Visitante | Eu posso informar meus dados antes de finalizar um pedido. | Salva nome, telefone e endereço do cliente. | `POST /clientes` | Implementado como registro no banco; não há senha nem início de sessão. |
+| Visitante / Cliente cadastrado | Eu posso fazer um pedido com um ou mais pratos e suas quantidades. | Valida cliente, disponibilidade dos pratos, modalidade e quantidades; grava pedido e itens em uma transação. | `POST /pedidos` | Implementado. A requisição precisa de um `id_cliente` já existente. |
+| Visitante / Cliente cadastrado | Eu posso escolher entrega ou retirada para meu pedido. | Salva `tipo_entrega` como `entrega` ou `retirada`. | `POST /pedidos` | Implementado. Na entrega, usa o endereço salvo no cadastro do cliente. |
+| Cliente cadastrado | Eu posso consultar e atualizar meus dados de contato e entrega. | Lê ou altera os dados do cliente pelo identificador. | `GET /clientes/:id`, `PUT /clientes/:id` | Implementado por identificador; a identidade de quem consulta não é confirmada. |
+| Cliente cadastrado | Eu posso consultar meu histórico e acompanhar o status dos pedidos. | Lista os pedidos de um identificador de cliente, do mais recente ao mais antigo, com pratos e quantidades. | `GET /clientes/:id/pedidos` | Implementado por identificador; não há verificação de que a pessoa é dona desse cadastro. |
+| Cliente cadastrado | Eu posso cancelar um pedido. | Altera o status para `cancelado` e preserva o histórico do pedido. | `DELETE /pedidos/:id` | Implementado. Apesar do método HTTP, a rota cancela o pedido em vez de apagá-lo. |
+| Proprietário / Equipe do restaurante | Eu posso cadastrar, editar e remover pratos do cardápio. | Operações de cadastro, consulta, alteração e exclusão de pratos; também é possível marcar um prato como indisponível. | `POST /pratos`, `GET /pratos?todos=true`, `PUT /pratos/:id`, `DELETE /pratos/:id` | Implementado. Um prato ligado ao histórico de pedidos não pode ser apagado; marque-o como indisponível. |
+| Proprietário / Equipe do restaurante | Eu posso consultar os pedidos recebidos, com cliente, pratos e quantidades. | Lista pedidos com seus dados relacionados. | `GET /pedidos`, `GET /pedidos/:id` | Implementado. As rotas ainda não exigem acesso da equipe. |
+| Proprietário / Equipe do restaurante | Eu posso atualizar o andamento do pedido. | Altera o status para um dos valores aceitos. | `PUT /pedidos/:id` | Implementado. Os valores estão na seção [Status dos pedidos](#status-dos-pedidos). |
+| Proprietário / Equipe do restaurante | Eu posso consultar e corrigir os itens de um pedido. | Lista, consulta, adiciona, altera e exclui itens. | Rotas `/itens-pedido` | Implementado com operações de cadastro, consulta, alteração e exclusão. |
 
-### Account and role limitation
+### Limitação de contas e permissões
 
-The roles above describe the intended user experience. **The current backend does not implement accounts, passwords, sessions, tokens, or role-based access.** A “Registered Client” currently means a row in the `Clientes` table, not a person who has signed in. The API does not distinguish a visitor from a client or a restaurant employee.
+Os tipos de usuário descrevem o uso pretendido. **O servidor ainda não implementa contas, senhas, sessões, tokens ou permissões por função.** Um “cliente cadastrado” é apenas uma linha na tabela `Clientes`, e não uma pessoa que entrou em uma conta. A API não diferencia visitante, cliente e funcionário do restaurante.
 
-As a result, a caller who can reach the API can currently list all orders and customers, request orders for any customer ID, edit dishes, and change order statuses. Add authentication and authorization before using the API with real customer data or exposing owner-only operations publicly.
+Por isso, qualquer pessoa que consiga acessar a API pode consultar todos os pedidos e clientes, solicitar pedidos de qualquer identificador, alterar pratos e atualizar status. Inclua autenticação e autorização antes de usar dados reais de clientes ou disponibilizar operações exclusivas do restaurante na internet.
 
-## System architecture
+## Arquitetura do sistema
 
 ```mermaid
 flowchart LR
-    Browser[React front end, planned] -->|HTTP and JSON| API[Node.js and Express API]
-    API -->|Sequelize| DB[(SQLite database)]
+    Browser[Interface React, planejada] -->|HTTP e JSON| API[Servidor Node.js e Express]
+    API -->|Sequelize| DB[(Banco SQLite)]
 ```
 
-The Express API listens on port `8080` by default. It stores `restaurante.db` beside `backend/index.js`, so the file location does not change based on the directory used to launch Node.js.
+Por padrão, a API Express usa a porta `8080`. O arquivo `restaurante.db` fica ao lado de `backend/index.js`, independentemente da pasta de onde o Node.js foi iniciado.
 
-## Data model
+## Modelo de dados
 
-The database follows the four-table structure in the presentation. Sequelize also adds `id`, `createdAt`, and `updatedAt` fields to each model.
+O banco segue as quatro tabelas da apresentação. O Sequelize também cria os campos `id`, `createdAt` e `updatedAt` para cada modelo.
 
-| Table / model | Fields in the backend | Purpose |
+| Tabela / modelo | Campos no servidor | Finalidade |
 |---|---|---|
-| `Cliente` | `id`, `nome`, `telefone`, `endereco`, timestamps | Customer contact and saved delivery address. |
-| `Prato` | `id`, `nome`, `descricao`, `preco`, `disponivel`, timestamps | Restaurant menu items and whether each may currently be ordered. |
-| `Pedido` | `id`, `data_hora`, `status`, `tipo_entrega`, `id_cliente`, timestamps | Order owner, creation time, progress, and delivery or pickup choice. |
-| `ItemPedido` | `id`, `id_pedido`, `id_prato`, `quantidade`, timestamps | Join table connecting orders to dishes and recording quantities. |
+| `Cliente` | `id`, `nome`, `telefone`, `endereco`, datas de criação e alteração | Dados de contato e endereço de entrega salvo do cliente. |
+| `Prato` | `id`, `nome`, `descricao`, `preco`, `disponivel`, datas de criação e alteração | Pratos do cardápio e indicação de disponibilidade para pedidos. |
+| `Pedido` | `id`, `data_hora`, `status`, `tipo_entrega`, `id_cliente`, datas de criação e alteração | Cliente, horário, andamento e escolha entre entrega e retirada. |
+| `ItemPedido` | `id`, `id_pedido`, `id_prato`, `quantidade`, datas de criação e alteração | Relação entre pedidos e pratos, com a quantidade solicitada. |
 
 ```mermaid
 erDiagram
-    CLIENTE ||--o{ PEDIDO : places
-    PEDIDO ||--o{ ITEM_PEDIDO : contains
-    PRATO ||--o{ ITEM_PEDIDO : appears_in
+    CLIENTE ||--o{ PEDIDO : faz
+    PEDIDO ||--o{ ITEM_PEDIDO : contem
+    PRATO ||--o{ ITEM_PEDIDO : aparece_em
     CLIENTE {
         int id PK
         string nome
@@ -95,42 +95,42 @@ erDiagram
     }
 ```
 
-`tipo_entrega` is an additional order field needed to support the presentation's delivery-or-pickup flow. At startup, the backend adds this column to an older `Pedidos` table if it is missing. Existing historical rows may have a null fulfillment type; new orders must provide one.
+`tipo_entrega` é um campo adicional necessário para representar a escolha entre entrega e retirada. Ao iniciar, o servidor adiciona essa coluna à tabela `Pedidos` caso ela ainda não exista. Registros antigos podem ficar sem esse valor; novos pedidos precisam informá-lo.
 
-## Order statuses
+## Status dos pedidos
 
-| Value | Meaning |
+| Valor | Significado |
 |---|---|
-| `recebido` | The API has saved the order. This is the initial status. |
-| `em_preparacao` | Restaurant staff are preparing the order. |
-| `saiu_para_entrega` | The order is on its way to the customer. |
-| `concluido` | The order is complete. |
-| `cancelado` | The order has been cancelled. Its data remains in the database. |
+| `recebido` | A API gravou o pedido. É o status inicial. |
+| `em_preparacao` | A equipe do restaurante está preparando o pedido. |
+| `saiu_para_entrega` | O pedido está a caminho do cliente. |
+| `concluido` | O pedido foi concluído. |
+| `cancelado` | O pedido foi cancelado. Seus dados permanecem no banco. |
 
-`PUT /pedidos/:id` accepts only these values. The implementation validates the list of values but does not enforce a particular transition sequence between them.
+`PUT /pedidos/:id` aceita somente esses valores. O código valida se o valor está na lista, mas não exige uma sequência específica de transições.
 
-## API reference
+## Referência da API
 
-All routes accept and return JSON unless noted. The API currently has **no public/private or role-protected routes**; the “intended user” column describes the planned use, not an access-control rule.
+Todas as rotas recebem e retornam JSON, exceto quando indicado. Atualmente, **nenhuma rota é protegida por login ou função de usuário**. A coluna “uso previsto” indica a finalidade, não uma regra de acesso aplicada pelo código.
 
-### Health check
+### Verificação do servidor
 
-| Method | Path | Intended use | Notes |
-|---|---|---|
-| `GET` | `/` | Check whether the API process responds. | Returns a plain-text health message. |
-
-### Dishes (`pratos`)
-
-| Method | Path | Intended use | Notes |
+| Método | Caminho | Uso previsto | Observações |
 |---|---|---|---|
-| `POST` | `/pratos` | Owner/staff creates a dish. | `nome` and `preco` are required; `disponivel` defaults to `true`. |
-| `GET` | `/pratos` | Visitor browses the menu. | Returns available dishes only. |
-| `GET` | `/pratos?todos=true` | Owner/staff views all dishes. | Includes unavailable dishes; currently not protected by a role check. |
-| `GET` | `/pratos/:id` | Read a dish by ID. | Returns `404` when it does not exist. |
-| `PUT` | `/pratos/:id` | Owner/staff edits a dish or availability. | Allowed fields: `nome`, `descricao`, `preco`, `disponivel`. |
-| `DELETE` | `/pratos/:id` | Owner/staff deletes a dish. | Fails with `409` when order history references the dish. Set `disponivel` to `false` to take it off the menu while retaining history. |
+| `GET` | `/` | Verificar se o processo da API responde. | Retorna uma mensagem em texto simples. |
 
-Example dish body:
+### Pratos (`pratos`)
+
+| Método | Caminho | Uso previsto | Observações |
+|---|---|---|---|
+| `POST` | `/pratos` | Proprietário/equipe cadastra um prato. | Exige `nome` e `preco`; `disponivel` assume `true` por padrão. |
+| `GET` | `/pratos` | Visitante consulta o cardápio. | Retorna somente pratos disponíveis. |
+| `GET` | `/pratos?todos=true` | Proprietário/equipe consulta todos os pratos. | Inclui pratos indisponíveis; ainda não exige permissão. |
+| `GET` | `/pratos/:id` | Consultar um prato pelo identificador. | Retorna `404` quando o prato não existe. |
+| `PUT` | `/pratos/:id` | Proprietário/equipe altera um prato ou sua disponibilidade. | Campos aceitos: `nome`, `descricao`, `preco`, `disponivel`. |
+| `DELETE` | `/pratos/:id` | Proprietário/equipe exclui um prato. | Retorna `409` se houver pedidos relacionados. Para retirá-lo do cardápio sem perder o histórico, altere `disponivel` para `false`. |
+
+Exemplo de dados para cadastrar um prato:
 
 ```json
 {
@@ -141,28 +141,28 @@ Example dish body:
 }
 ```
 
-### Customers (`clientes`)
+### Clientes (`clientes`)
 
-| Method | Path | Intended use | Notes |
+| Método | Caminho | Uso previsto | Observações |
 |---|---|---|---|
-| `POST` | `/clientes` | Create a customer record before checkout. | Requires `nome`, `telefone`, and `endereco`; returns the generated `id`. |
-| `GET` | `/clientes` | Owner/staff lists customers. | Returns all customer records; currently public. |
-| `GET` | `/clientes/:id` | Read a customer's details. | Returns `404` when missing. |
-| `GET` | `/clientes/:id/pedidos` | Customer tracks their orders. | Filters by the supplied customer ID and includes line items and dishes. The API does not authenticate ownership. |
-| `PUT` | `/clientes/:id` | Update customer contact/address. | Allowed fields: `nome`, `telefone`, `endereco`. |
-| `DELETE` | `/clientes/:id` | Delete a customer record. | Fails if order history references that customer. |
+| `POST` | `/clientes` | Criar o registro do cliente antes do pedido. | Exige `nome`, `telefone` e `endereco`; retorna o `id` gerado. |
+| `GET` | `/clientes` | Proprietário/equipe consulta clientes. | Retorna todos os registros; a rota ainda é pública. |
+| `GET` | `/clientes/:id` | Consultar os dados de um cliente. | Retorna `404` se o cadastro não existir. |
+| `GET` | `/clientes/:id/pedidos` | Cliente acompanha seus pedidos. | Filtra pelo identificador enviado e inclui itens e pratos; não confirma a identidade do solicitante. |
+| `PUT` | `/clientes/:id` | Alterar contato ou endereço do cliente. | Campos aceitos: `nome`, `telefone`, `endereco`. |
+| `DELETE` | `/clientes/:id` | Excluir um cadastro de cliente. | Não permite a exclusão quando há pedidos relacionados. |
 
-### Orders (`pedidos`)
+### Pedidos (`pedidos`)
 
-| Method | Path | Intended use | Notes |
+| Método | Caminho | Uso previsto | Observações |
 |---|---|---|---|
-| `POST` | `/pedidos` | Customer submits an order. | Creates the order and all its items atomically. Requires at least one item, a valid customer, available dishes, positive integer quantities, and a fulfillment type. |
-| `GET` | `/pedidos` | Owner/staff views received orders. | Includes customer, dish, and quantity information; currently public. |
-| `GET` | `/pedidos/:id` | Read one order. | Includes customer, items, and dishes. |
-| `PUT` | `/pedidos/:id` | Owner/staff updates progress. | Body must contain a valid `status`. Other order fields cannot be changed through this route. |
-| `DELETE` | `/pedidos/:id` | Cancel an order. | Sets status to `cancelado`; does not remove the order or its items. |
+| `POST` | `/pedidos` | Cliente envia um pedido. | Cria pedido e itens em uma transação. Exige cliente existente, ao menos um item, pratos disponíveis, quantidades inteiras positivas e modalidade de entrega ou retirada. |
+| `GET` | `/pedidos` | Proprietário/equipe consulta pedidos recebidos. | Inclui cliente, pratos e quantidades; ainda é uma rota pública. |
+| `GET` | `/pedidos/:id` | Consultar um pedido. | Inclui cliente, itens e pratos. |
+| `PUT` | `/pedidos/:id` | Proprietário/equipe atualiza o andamento. | O corpo precisa conter um `status` aceito. Esta rota não altera outros campos do pedido. |
+| `DELETE` | `/pedidos/:id` | Cancelar um pedido. | Define o status `cancelado`; não apaga o pedido nem seus itens. |
 
-Example new order:
+Exemplo de pedido:
 
 ```json
 {
@@ -175,9 +175,9 @@ Example new order:
 }
 ```
 
-Use `"tipo_entrega": "retirada"` for customer pickup. The backend uses the customer's saved `endereco` for delivery; the order does not store a separate address snapshot.
+Use `"tipo_entrega": "retirada"` quando o cliente for buscar o pedido. Para entrega, o servidor usa o `endereco` salvo no cadastro do cliente; o pedido não guarda uma cópia separada do endereço.
 
-Example status update:
+Exemplo de alteração de status:
 
 ```json
 {
@@ -185,65 +185,64 @@ Example status update:
 }
 ```
 
-### Order items (`itens-pedido`)
+### Itens do pedido (`itens-pedido`)
 
-These routes support the required CRUD operations and restaurant-side corrections. The normal customer checkout should use `POST /pedidos`, which saves the order and all its lines in one transaction.
+Estas rotas oferecem as operações CRUD exigidas e permitem correções pela equipe. No fluxo normal de compra, use `POST /pedidos`, que grava o pedido e todos os itens na mesma transação.
 
-| Method | Path | Intended use | Notes |
+| Método | Caminho | Uso previsto | Observações |
 |---|---|---|---|
-| `POST` | `/itens-pedido` | Add an item to an existing order. | Requires `id_pedido`, `id_prato`, and a positive integer `quantidade`. |
-| `GET` | `/itens-pedido` | List items for review. | Includes parent order and dish information. |
-| `GET` | `/itens-pedido/:id` | Read one item. | Includes its order and dish. |
-| `PUT` | `/itens-pedido/:id` | Correct an item's order, dish, or quantity. | Quantity must be a positive integer. |
-| `DELETE` | `/itens-pedido/:id` | Remove one item. | Returns `404` if the item is missing. |
+| `POST` | `/itens-pedido` | Adicionar item a um pedido existente. | Exige `id_pedido`, `id_prato` e `quantidade` inteira positiva. |
+| `GET` | `/itens-pedido` | Consultar itens. | Inclui os dados do pedido e do prato relacionados. |
+| `GET` | `/itens-pedido/:id` | Consultar um item. | Inclui os dados do pedido e do prato. |
+| `PUT` | `/itens-pedido/:id` | Corrigir o pedido, prato ou quantidade de um item. | A quantidade deve ser um inteiro positivo. |
+| `DELETE` | `/itens-pedido/:id` | Excluir um item. | Retorna `404` se ele não existir. |
 
-## Validation and error responses
+## Validações e respostas de erro
 
-The API validates positive record IDs, required JSON object bodies, order item IDs, dish availability at checkout, fulfillment type, status, and positive integer quantities. It responds with:
+A API valida identificadores positivos, corpos JSON em formato de objeto, dados dos itens, disponibilidade dos pratos no momento do pedido, modalidade de entrega ou retirada, status e quantidades inteiras positivas. As respostas principais são:
 
-| HTTP status | Meaning |
+| Código HTTP | Significado |
 |---|---|
-| `201` | A dish, customer, order, or item was created. |
-| `200` | A read, update, cancellation, or deletion completed. |
-| `400` | Request data is invalid. |
-| `404` | The requested record does not exist. |
-| `409` | A related record prevents the requested deletion. |
-| `500` | An unexpected server error occurred. |
+| `201` | Prato, cliente, pedido ou item criado. |
+| `200` | Consulta, alteração, cancelamento ou exclusão concluída. |
+| `400` | Dados enviados são inválidos. |
+| `404` | Registro solicitado não existe. |
+| `409` | Um registro relacionado impede a exclusão solicitada. |
+| `500` | Ocorreu um erro inesperado no servidor. |
 
-Order creation uses a database transaction: if validating or saving any item fails, the order and its items are rolled back together.
+A criação de um pedido usa uma transação do banco de dados. Se a validação ou gravação de qualquer item falhar, o pedido e todos os seus itens são desfeitos juntos.
 
-## Running the backend
+## Como iniciar o servidor
 
-Requirements: a supported Node.js installation and working `npm` installation for the dependencies, including the native SQLite module.
+Requisitos: uma instalação compatível do Node.js e o `npm` funcionando para instalar as dependências, incluindo o módulo nativo do SQLite.
 
-In PowerShell:
+No terminal do WSL:
 
-```powershell
+```bash
 cd backend
 npm install
 node index.js
 ```
 
-The API uses `http://localhost:8080` by default. To use a different port in PowerShell:
+Por padrão, a API fica disponível em `http://localhost:8080`. Para usar outra porta no WSL:
 
-```powershell
-$env:PORT = "8081"
-node index.js
+```bash
+PORT=8081 node index.js
 ```
 
-The database is created at `backend/restaurante.db`. The `.gitignore` excludes `.db` files so local customer/order data is not committed accidentally. Sequelize creates missing tables on startup and adds the `tipo_entrega` column if an older `Pedidos` table does not have it.
+O banco de dados será criado em `backend/restaurante.db`. O arquivo `.gitignore` exclui arquivos `.db` para evitar que dados locais de clientes e pedidos sejam enviados ao repositório sem querer. O Sequelize cria tabelas ausentes ao iniciar, e o servidor adiciona `tipo_entrega` se a tabela `Pedidos` antiga ainda não tiver essa coluna.
 
-There is no configured automated test suite yet. `backend/package.json` currently contains a placeholder `test` script.
+Ainda não existe uma bateria de testes automatizados. O script `test` em `backend/package.json` é apenas um exemplo provisório.
 
-## Current implementation boundaries
+## Limites da implementação atual
 
-- The React screens, menu cart, login pages, and owner dashboard are described by the presentation but are not included in this repository's current backend project files.
-- Login, password storage, session/token handling, and owner-versus-customer authorization are not implemented.
-- No payment processing, stock/inventory count, delivery assignment, estimated delivery time, email/SMS notifications, or real-time push updates are included.
-- Customer tracking is an HTTP read route; a front end would need to refresh/poll it to show status changes.
-- Orders store dishes and quantities but do not store a price snapshot or calculated total. A changed menu price can therefore affect what a client displays later unless the front end snapshots or the schema is extended.
-- The API has no authentication-based privacy boundary yet. Do not expose it publicly with real customer information until that is added.
+- As telas React, o carrinho de pedidos, as telas de acesso e o painel do restaurante aparecem na apresentação, mas não estão incluídos nos arquivos atuais do servidor.
+- Não foram implementados acesso por conta, armazenamento de senhas, sessões, tokens nem permissões entre cliente e equipe.
+- Não há pagamento, controle de quantidade em estoque, entregador designado, previsão de entrega, notificações por mensagem ou atualização imediata da tela.
+- O acompanhamento do cliente é uma consulta HTTP; a interface precisará consultar novamente a rota para exibir mudanças de status.
+- Os pedidos guardam pratos e quantidades, mas não registram o preço praticado no momento da compra nem o valor total. Se o preço do cardápio mudar, a interface poderá exibir outro valor ao consultar o pedido, a menos que o preço seja salvo no pedido ou o modelo do banco seja ampliado.
+- Como ainda não há autenticação, não exponha a API publicamente com dados reais de clientes.
 
-## Runtime note
+## Observação sobre a execução
 
-The source passes `node --check`, but the current development environment could not start the API because its installed `sqlite3` native binding reported that it was not a valid Win32 application. This is a local dependency/runtime issue, not proof that the database configuration has connected successfully. Reinstall or rebuild the backend dependencies on the target Windows/Node.js environment, then start the server and confirm the health route and database-backed requests.
+O código passa na verificação de sintaxe `node --check`, mas o ambiente de desenvolvimento usado na revisão não conseguiu iniciar a API: o módulo nativo `sqlite3` instalado informou que não era um aplicativo Win32 válido. Isso indica um problema local de dependência ou compatibilidade, e não confirma que a conexão com o banco foi executada com sucesso. Reinstale ou reconstrua as dependências no ambiente Windows/Node.js de destino; depois, inicie o servidor e confirme a rota inicial e as consultas que acessam o banco.
