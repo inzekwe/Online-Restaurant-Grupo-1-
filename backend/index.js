@@ -109,8 +109,8 @@ function pick(body, fields) {
     return result
 }
 
-// Create a dish in the restaurant's menu and default it to available unless specified otherwise.
-// Cadastra um prato no cardápio e o define como disponível, salvo indicação contrária.
+// Back Office (BKO): create a menu dish, defaulting it to available unless specified otherwise.
+// Back Office (BKO): cadastra um prato e o define como disponível, salvo indicação contrária.
 app.post("/pratos", async (req, res) => {
     if (!isObject(req.body)) return res.status(400).json({ error: "Envie os dados do prato em JSON" })
     const data = pick(req.body, ["nome", "descricao", "preco", "disponivel"])
@@ -118,8 +118,8 @@ app.post("/pratos", async (req, res) => {
     return res.status(201).json(prato)
 })
 
-// List available menu dishes, or all dishes when the restaurant requests ?todos=true.
-// Lista pratos disponíveis ou todos os pratos quando o restaurante usa ?todos=true.
+// Public menu: list available dishes. The Back Office uses ?todos=true to manage unavailable dishes too.
+// Cardápio público: lista pratos disponíveis. O Back Office usa ?todos=true para incluir os indisponíveis.
 app.get("/pratos", async (req, res) => {
     const options = { order: [["nome", "ASC"]] }
     if (req.query.todos !== "true") options.where = { disponivel: true }
@@ -127,8 +127,8 @@ app.get("/pratos", async (req, res) => {
     return res.json(pratos)
 })
 
-// Read one dish by its database ID for a menu detail or restaurant edit screen.
-// Busca um prato pelo identificador para exibir detalhes ou permitir sua edição pelo restaurante.
+// Read one dish by ID for menu details or the Back Office edit screen.
+// Busca um prato pelo ID para detalhes do cardápio ou para a tela de edição do Back Office.
 app.get("/pratos/:id", async (req, res) => {
     const id = positiveId(req.params.id)
     if (!id) return res.status(400).json({ error: "ID de prato inválido" })
@@ -137,8 +137,8 @@ app.get("/pratos/:id", async (req, res) => {
     return res.json(prato)
 })
 
-// Edit a dish's menu details or availability.
-// Altera os dados de um prato ou sua disponibilidade no cardápio.
+// Back Office (BKO): edit a dish's menu details or availability.
+// Back Office (BKO): altera os dados do prato ou sua disponibilidade no cardápio.
 app.put("/pratos/:id", async (req, res) => {
     const id = positiveId(req.params.id)
     if (!id) return res.status(400).json({ error: "ID de prato inválido" })
@@ -149,8 +149,8 @@ app.put("/pratos/:id", async (req, res) => {
     return res.json(prato)
 })
 
-// Remove a dish from inventory when no order history references it.
-// Exclui um prato do cadastro quando nenhum pedido do histórico faz referência a ele.
+// Back Office (BKO): remove a dish only when no order history references it.
+// Back Office (BKO): exclui o prato somente quando nenhum pedido do histórico faz referência a ele.
 app.delete("/pratos/:id", async (req, res) => {
     const id = positiveId(req.params.id)
     if (!id) return res.status(400).json({ error: "ID de prato inválido" })

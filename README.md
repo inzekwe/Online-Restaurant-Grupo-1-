@@ -15,7 +15,7 @@ O sistema deve conduzir o pedido pelas seguintes etapas:
 5. A equipe do restaurante consulta o pedido, o cliente, os pratos e as quantidades.
 6. A equipe atualiza o status, e o cliente acompanha o andamento usando seu identificador.
 
-A apresentação propõe uma interface web em React, uma API em Node.js e Express e um banco SQLite acessado pelo Sequelize. Este repositório contém a implementação do servidor; a interface em React ainda não está incluída.
+A apresentação propõe uma interface web em React, uma API em Node.js e Express e um banco SQLite acessado pelo Sequelize. As tarefas exclusivas do proprietário/equipe devem ser feitas pelo Back Office (BKO): o painel administrativo que consome as rotas da API. Este repositório contém a implementação do servidor; o painel BKO e a interface de cliente em React ainda não estão incluídos.
 
 ## Histórias de usuário e funcionalidades
 
@@ -30,14 +30,14 @@ A apresentação propõe uma interface web em React, uma API em Node.js e Expres
 | Cliente cadastrado | Eu posso consultar e atualizar meus dados de contato e entrega. | Lê ou altera os dados do cliente pelo identificador. | `GET /clientes/:id`, `PUT /clientes/:id` | Implementado por identificador; a identidade de quem consulta não é confirmada. |
 | Cliente cadastrado | Eu posso consultar meu histórico e acompanhar o status dos pedidos. | Lista os pedidos de um identificador de cliente, do mais recente ao mais antigo, com pratos e quantidades. | `GET /clientes/:id/pedidos` | Implementado por identificador; não há verificação de que a pessoa é dona desse cadastro. |
 | Cliente cadastrado | Eu posso cancelar um pedido. | Altera o status para `cancelado` e preserva o histórico do pedido. | `DELETE /pedidos/:id` | Implementado. Apesar do método HTTP, a rota cancela o pedido em vez de apagá-lo. |
-| Proprietário / Equipe do restaurante | Eu posso cadastrar, editar e remover pratos do cardápio. | Operações de cadastro, consulta, alteração e exclusão de pratos; também é possível marcar um prato como indisponível. | `POST /pratos`, `GET /pratos?todos=true`, `PUT /pratos/:id`, `DELETE /pratos/:id` | Implementado. Um prato ligado ao histórico de pedidos não pode ser apagado; marque-o como indisponível. |
+| Proprietário / Equipe do restaurante (Back Office/BKO) | No BKO, eu posso cadastrar, editar e remover pratos do cardápio. | O BKO usa a API para cadastrar, consultar todos os pratos (inclusive indisponíveis), editar dados e disponibilidade, ou excluir pratos sem histórico de pedidos. | `POST /pratos`, `GET /pratos?todos=true`, `GET /pratos/:id`, `PUT /pratos/:id`, `DELETE /pratos/:id` | As operações da API estão implementadas para integração com o BKO. A interface BKO ainda precisa ser criada e conectada; não há login ou autorização, então essas rotas ainda não são restritas ao proprietário/equipe. Um prato ligado ao histórico não pode ser apagado; marque-o como indisponível. |
 | Proprietário / Equipe do restaurante | Eu posso consultar os pedidos recebidos, com cliente, pratos e quantidades. | Lista pedidos com seus dados relacionados. | `GET /pedidos`, `GET /pedidos/:id` | Implementado. As rotas ainda não exigem acesso da equipe. |
 | Proprietário / Equipe do restaurante | Eu posso atualizar o andamento do pedido. | Altera o status para um dos valores aceitos. | `PUT /pedidos/:id` | Implementado. Os valores estão na seção [Status dos pedidos](#status-dos-pedidos). |
 | Proprietário / Equipe do restaurante | Eu posso consultar e corrigir os itens de um pedido. | Lista, consulta, adiciona, altera e exclui itens. | Rotas `/itens-pedido` | Implementado com operações de cadastro, consulta, alteração e exclusão. |
 
-### Limitação de contas e permissões
+### Back Office (BKO) e limitação de contas e permissões
 
-Os tipos de usuário descrevem o uso pretendido. **O servidor ainda não implementa contas, senhas, sessões, tokens ou permissões por função.** Um “cliente cadastrado” é apenas uma linha na tabela `Clientes`, e não uma pessoa que entrou em uma conta. A API não diferencia visitante, cliente e funcionário do restaurante.
+O BKO é a área administrativa destinada ao proprietário/equipe para gerenciar pratos e pedidos. Nesta etapa, o backend oferece as rotas que o BKO deverá consumir, mas a interface do painel ainda não existe neste repositório. Os tipos de usuário descrevem o uso pretendido. **O servidor ainda não implementa contas, senhas, sessões, tokens ou permissões por função.** Um “cliente cadastrado” é apenas uma linha na tabela `Clientes`, e não uma pessoa que entrou em uma conta. A API não diferencia visitante, cliente e funcionário do restaurante.
 
 Por isso, qualquer pessoa que consiga acessar a API pode consultar todos os pedidos e clientes, solicitar pedidos de qualquer identificador, alterar pratos e atualizar status. Inclua autenticação e autorização antes de usar dados reais de clientes ou disponibilizar operações exclusivas do restaurante na internet.
 
@@ -123,12 +123,12 @@ Todas as rotas recebem e retornam JSON, exceto quando indicado. Atualmente, **ne
 
 | Método | Caminho | Uso previsto | Observações |
 |---|---|---|---|
-| `POST` | `/pratos` | Proprietário/equipe cadastra um prato. | Exige `nome` e `preco`; `disponivel` assume `true` por padrão. |
+| `POST` | `/pratos` | BKO: proprietário/equipe cadastra um prato. | Exige `nome` e `preco`; `disponivel` assume `true` por padrão. |
 | `GET` | `/pratos` | Visitante consulta o cardápio. | Retorna somente pratos disponíveis. |
-| `GET` | `/pratos?todos=true` | Proprietário/equipe consulta todos os pratos. | Inclui pratos indisponíveis; ainda não exige permissão. |
-| `GET` | `/pratos/:id` | Consultar um prato pelo identificador. | Retorna `404` quando o prato não existe. |
-| `PUT` | `/pratos/:id` | Proprietário/equipe altera um prato ou sua disponibilidade. | Campos aceitos: `nome`, `descricao`, `preco`, `disponivel`. |
-| `DELETE` | `/pratos/:id` | Proprietário/equipe exclui um prato. | Retorna `409` se houver pedidos relacionados. Para retirá-lo do cardápio sem perder o histórico, altere `disponivel` para `false`. |
+| `GET` | `/pratos?todos=true` | BKO: proprietário/equipe consulta todos os pratos. | Inclui pratos indisponíveis; ainda não exige permissão. |
+| `GET` | `/pratos/:id` | BKO consulta um prato pelo identificador para exibição ou edição. | Retorna `404` quando o prato não existe. |
+| `PUT` | `/pratos/:id` | BKO: proprietário/equipe altera um prato ou sua disponibilidade. | Campos aceitos: `nome`, `descricao`, `preco`, `disponivel`. Para marcar como indisponível, envie `{"disponivel":false}`. |
+| `DELETE` | `/pratos/:id` | BKO: proprietário/equipe exclui um prato. | Retorna `409` se houver pedidos relacionados. Para retirá-lo do cardápio sem perder o histórico, altere `disponivel` para `false`. |
 
 Exemplo de dados para cadastrar um prato:
 
@@ -236,7 +236,7 @@ Ainda não existe uma bateria de testes automatizados. O script `test` em `backe
 
 ## Limites da implementação atual
 
-- As telas React, o carrinho de pedidos, as telas de acesso e o painel do restaurante aparecem na apresentação, mas não estão incluídos nos arquivos atuais do servidor.
+- As telas React, o carrinho de pedidos, as telas de acesso e o painel Back Office (BKO) aparecem na apresentação, mas não estão incluídos neste repositório. As rotas de gestão de pratos e pedidos são a camada de API para o futuro BKO.
 - Não foram implementados acesso por conta, armazenamento de senhas, sessões, tokens nem permissões entre cliente e equipe.
 - Não há pagamento, controle de quantidade em estoque, entregador designado, previsão de entrega, notificações por mensagem ou atualização imediata da tela.
 - O acompanhamento do cliente é uma consulta HTTP; a interface precisará consultar novamente a rota para exibir mudanças de status.
