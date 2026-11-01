@@ -3,6 +3,27 @@ const express = require("express")
 const { Sequelize, DataTypes } = require("sequelize")
 
 const app = express()
+// Allow the separate React development server to call the API. Set CORS_ORIGINS
+// to a comma-separated list of trusted frontend origins in other environments.
+// Permite que o servidor React separado acesse a API. Configure CORS_ORIGINS
+// com uma lista de origens confiáveis nos demais ambientes.
+const allowedOrigins = new Set(
+    (process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:5173")
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+)
+app.use((req, res, next) => {
+    const origin = req.get("Origin")
+    if (origin && allowedOrigins.has(origin)) {
+        res.setHeader("Access-Control-Allow-Origin", origin)
+        res.setHeader("Vary", "Origin")
+        res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    }
+    if (req.method === "OPTIONS") return res.sendStatus(204)
+    return next()
+})
 // Parse incoming JSON request bodies so route handlers can read req.body.
 // Analisa os corpos das requisições JSON para que as rotas possam ler req.body.
 app.use(express.json())
@@ -391,6 +412,9 @@ app.get("/", (_req, res) => res.send("API do Restaurante Online funcionando"))
 // Converte erros de validação, de chave estrangeira e inesperados em respostas HTTP compreensíveis.
 app.use((err, _req, res, _next) => {
     if (res.headersSent) return
+    if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+        return res.status(400).json({ error: "JSON inválido" })
+    }
     if (err.status) return res.status(err.status).json({ error: err.message })
     if (err instanceof Sequelize.ValidationError) {
         return res.status(400).json({ error: err.errors.map((item) => item.message).join("; ") })

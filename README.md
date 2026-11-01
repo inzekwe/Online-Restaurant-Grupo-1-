@@ -39,7 +39,7 @@ A apresentação propõe uma interface web em React, uma API em Node.js e Expres
 
 O BKO é a área administrativa destinada ao proprietário/equipe para gerenciar pratos e pedidos. Nesta etapa, o backend oferece as rotas que o BKO deverá consumir, mas a interface do painel ainda não existe neste repositório. Os tipos de usuário descrevem o uso pretendido. **O servidor ainda não implementa contas, senhas, sessões, tokens ou permissões por função.** Um “cliente cadastrado” é apenas uma linha na tabela `Clientes`, e não uma pessoa que entrou em uma conta. A API não diferencia visitante, cliente e funcionário do restaurante.
 
-Por isso, qualquer pessoa que consiga acessar a API pode consultar todos os pedidos e clientes, solicitar pedidos de qualquer identificador, alterar pratos e atualizar status. Inclua autenticação e autorização antes de usar dados reais de clientes ou disponibilizar operações exclusivas do restaurante na internet.
+Por isso, qualquer pessoa que consiga acessar a API pode consultar todos os pedidos e clientes, enviar um pedido informando um `id_cliente` existente, alterar pratos e atualizar status. O campo `id_cliente` confirma apenas que o cadastro existe; **não prova que a requisição foi feita por aquele cliente**. Assim, a regra “somente cliente cadastrado” ainda não é aplicada por login. Implemente autenticação e autorização antes de usar dados reais de clientes ou disponibilizar operações exclusivas do restaurante na internet.
 
 ## Arquitetura do sistema
 
@@ -50,6 +50,16 @@ flowchart LR
 ```
 
 Por padrão, a API Express usa a porta `8080`. O arquivo `restaurante.db` fica ao lado de `backend/index.js`, independentemente da pasta de onde o Node.js foi iniciado.
+
+### Integração com React (CORS)
+
+A API aceita por padrão requisições de desenvolvimento originadas em `http://localhost:3000` e `http://localhost:5173` (portas comuns do React). Para outros endereços, configure `CORS_ORIGINS` como uma lista separada por vírgulas contendo as origens completas, incluindo protocolo e porta. Exemplo no WSL:
+
+```bash
+CORS_ORIGINS=http://localhost:5173,http://localhost:3000 node index.js
+```
+
+As requisições `OPTIONS` de preflight são atendidas e os métodos `GET`, `POST`, `PUT` e `DELETE` aceitam `Content-Type` e `Authorization`. A API não habilita credenciais/cookies. O navegador pode bloquear origens que não estejam na lista.
 
 ## Modelo de dados
 
