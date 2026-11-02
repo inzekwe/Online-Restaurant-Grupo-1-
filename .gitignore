@@ -18,6 +18,7 @@ node_modules/
 *.db
 *.sqlite
 *.sqlite3
+backend/uploads/
 *-journal
 *-wal
 *-shm

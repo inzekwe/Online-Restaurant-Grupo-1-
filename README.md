@@ -15,7 +15,7 @@ O sistema deve conduzir o pedido pelas seguintes etapas:
 5. A equipe do restaurante consulta o pedido, o cliente, os pratos e as quantidades.
 6. A equipe atualiza o status, e o cliente acompanha o andamento usando seu identificador.
 
-A apresentação propõe uma interface web em React, uma API em Node.js e Express e um banco SQLite acessado pelo Sequelize. As tarefas exclusivas do proprietário/equipe devem ser feitas pelo Back Office (BKO): o painel administrativo que consome as rotas da API. Este repositório contém a implementação do servidor; o painel BKO e a interface de cliente em React ainda não estão incluídos.
+A apresentação propõe uma interface web em React, uma API em Node.js e Express e um banco SQLite acessado pelo Sequelize. As tarefas exclusivas do proprietário/equipe devem ser feitas pelo Back Office (BKO): o painel administrativo que consome as rotas da API. Este repositório contém o backend e a interface React inicial em frontend/. O painel BKO e a experiência do cliente estão reunidos nessa aplicação.
 
 ## Histórias de usuário e funcionalidades
 
@@ -24,28 +24,31 @@ A apresentação propõe uma interface web em React, uma API em Node.js e Expres
 | Tipo de usuário | História de usuário / Eu posso | Funcionalidade no servidor | Rota(s) da API | Situação atual |
 |---|---|---|---|---|
 | Visitante | Eu posso consultar o cardápio e ver nome, descrição e preço dos pratos. | Lista pratos disponíveis e consulta um prato pelo identificador. | `GET /pratos`, `GET /pratos/:id` | Implementado. A listagem padrão oculta pratos indisponíveis. |
-| Visitante | Eu posso informar meus dados antes de finalizar um pedido. | Salva nome, telefone e endereço do cliente. | `POST /clientes` | Implementado como registro no banco; não há senha nem início de sessão. |
-| Cliente cadastrado | Eu posso fazer um pedido com um ou mais pratos e suas quantidades. | Valida cliente, disponibilidade dos pratos, modalidade e quantidades; grava pedido e itens em uma transação. | `POST /pedidos` | Implementado. A requisição precisa de um `id_cliente` já existente. |
+| Visitante | Eu posso conhecer os pratos em destaque e abrir os detalhes de um prato. | Classifica pratos disponíveis por unidades vendidas e apresenta fotos, descrição e preço. | `GET /pratos/destaques` | Implementado no cardápio com destaque rotativo. |
+| Visitante | Eu posso montar uma sacola e consultar o cardápio sem entrar. | Mantém itens no navegador; exige conta para checkout e acompanhamento. | `GET /pratos` | Implementado no frontend. Visitantes não acessam a área “Meus pedidos” sem entrar. |
+| Visitante | Eu posso criar uma conta para fazer pedidos. | Salva dados do cliente e hash de senha, retorna código e token de sessão. | `POST /auth/register` | Implementado; senha mínima de 8 caracteres. |
+| Cliente cadastrado | Eu posso entrar na minha conta e acompanhar meus pedidos. | Emite token assinado e retorna somente o histórico da conta autenticada. | `POST /auth/login`, `GET /minha-conta/pedidos` | Implementado; exige código de cliente e senha. |
+| Cliente cadastrado | Eu posso fazer um pedido com um ou mais pratos e suas quantidades. | Valida cliente, disponibilidade dos pratos, modalidade e quantidades; grava pedido e itens em uma transação. | `POST /pedidos` | Implementado. A requisição precisa de um `codigo_cliente` já existente (ou ID numérico legado); o campo no JSON continua se chamando `id_cliente`. |
 | Cliente cadastrado | Eu posso escolher entrega ou retirada para meu pedido. | Salva `tipo_entrega` como `entrega` ou `retirada`. | `POST /pedidos` | Implementado. Na entrega, usa o endereço salvo no cadastro do cliente. |
-| Cliente cadastrado | Eu posso consultar e atualizar meus dados de contato e entrega. | Lê ou altera os dados do cliente pelo identificador. | `GET /clientes/:id`, `PUT /clientes/:id` | Implementado por identificador; a identidade de quem consulta não é confirmada. |
-| Cliente cadastrado | Eu posso consultar meu histórico e acompanhar o status dos pedidos. | Lista os pedidos de um identificador de cliente, do mais recente ao mais antigo, com pratos e quantidades. | `GET /clientes/:id/pedidos` | Implementado por identificador; não há verificação de que a pessoa é dona desse cadastro. |
+| Cliente cadastrado | Eu posso consultar e atualizar meus dados de contato e entrega. | Lê e altera os dados da conta autenticada. | `GET /auth/me`, `PUT /minha-conta` | Implementado com token de sessão. |
+| Cliente cadastrado | Eu posso consultar meu histórico e acompanhar o status dos pedidos. | Lista somente os pedidos da conta autenticada, do mais recente ao mais antigo. | `GET /minha-conta/pedidos` | Implementado com token de sessão. |
 | Cliente cadastrado | Eu posso cancelar um pedido. | Altera o status para `cancelado` e preserva o histórico do pedido. | `DELETE /pedidos/:id` | Implementado. Apesar do método HTTP, a rota cancela o pedido em vez de apagá-lo. |
-| Proprietário / Equipe do restaurante (Back Office/BKO) | No BKO, eu posso cadastrar, editar e remover pratos do cardápio. | O BKO usa a API para cadastrar, consultar todos os pratos (inclusive indisponíveis), editar dados e disponibilidade, ou excluir pratos sem histórico de pedidos. | `POST /pratos`, `GET /pratos?todos=true`, `GET /pratos/:id`, `PUT /pratos/:id`, `DELETE /pratos/:id` | As operações da API estão implementadas para integração com o BKO. A interface BKO ainda precisa ser criada e conectada; não há login ou autorização, então essas rotas ainda não são restritas ao proprietário/equipe. Um prato ligado ao histórico não pode ser apagado; marque-o como indisponível. |
+| Proprietário / Equipe do restaurante (Back Office/BKO) | No BKO, eu posso cadastrar, editar e remover pratos do cardápio. | O BKO salva categoria, foto, dados e disponibilidade; pode consultar todos os pratos ou excluir pratos sem histórico. | `POST /pratos`, `GET /pratos?todos=true`, `GET /pratos/:id`, `PUT /pratos/:id`, `DELETE /pratos/:id` | Categorias aceitas: Pratos principais, Sobremesas e Bebidas. Um prato ligado ao histórico não pode ser apagado; marque-o como indisponível. |
 | Proprietário / Equipe do restaurante | Eu posso consultar os pedidos recebidos, com cliente, pratos e quantidades. | Lista pedidos com seus dados relacionados. | `GET /pedidos`, `GET /pedidos/:id` | Implementado. As rotas ainda não exigem acesso da equipe. |
 | Proprietário / Equipe do restaurante | Eu posso atualizar o andamento do pedido. | Altera o status para um dos valores aceitos. | `PUT /pedidos/:id` | Implementado. Os valores estão na seção [Status dos pedidos](#status-dos-pedidos). |
 | Proprietário / Equipe do restaurante | Eu posso consultar e corrigir os itens de um pedido. | Lista, consulta, adiciona, altera e exclui itens. | Rotas `/itens-pedido` | Implementado com operações de cadastro, consulta, alteração e exclusão. |
 
 ### Back Office (BKO) e limitação de contas e permissões
 
-O BKO é a área administrativa destinada ao proprietário/equipe para gerenciar pratos e pedidos. Nesta etapa, o backend oferece as rotas que o BKO deverá consumir, mas a interface do painel ainda não existe neste repositório. Os tipos de usuário descrevem o uso pretendido. **O servidor ainda não implementa contas, senhas, sessões, tokens ou permissões por função.** Um “cliente cadastrado” é apenas uma linha na tabela `Clientes`, e não uma pessoa que entrou em uma conta. A API não diferencia visitante, cliente e funcionário do restaurante.
+O BKO é a área administrativa destinada ao proprietário/equipe para gerenciar pratos e pedidos. O BKO está disponível na aplicação React em frontend/ e consome as rotas administrativas do backend. O fluxo de conta e sessão foi implementado para clientes. O BKO ainda não possui login nem autorização de equipe.
 
-Por isso, qualquer pessoa que consiga acessar a API pode consultar todos os pedidos e clientes, enviar um pedido informando um `id_cliente` existente, alterar pratos e atualizar status. O campo `id_cliente` confirma apenas que o cadastro existe; **não prova que a requisição foi feita por aquele cliente**. Assim, a regra “somente cliente cadastrado” ainda não é aplicada por login. Implemente autenticação e autorização antes de usar dados reais de clientes ou disponibilizar operações exclusivas do restaurante na internet.
+As rotas administrativas de pratos, clientes, pedidos e itens continuam públicas e precisam de autenticação/autorização de equipe antes de disponibilizar o BKO na internet. Pedidos de clientes exigem token e só podem ser feitos para a conta autenticada. Tokens de desenvolvimento usam `TOKEN_SECRET`; configure um segredo longo e aleatório no ambiente antes de implantar.
 
 ## Arquitetura do sistema
 
 ```mermaid
 flowchart LR
-    Browser[Interface React, planejada] -->|HTTP e JSON| API[Servidor Node.js e Express]
+    Browser[Frontend React] -->|HTTP e JSON| API[Servidor Node.js e Express]
     API -->|Sequelize| DB[(Banco SQLite)]
 ```
 
@@ -61,14 +64,24 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:3000 node index.js
 
 As requisições `OPTIONS` de preflight são atendidas e os métodos `GET`, `POST`, `PUT` e `DELETE` aceitam `Content-Type` e `Authorization`. A API não habilita credenciais/cookies. O navegador pode bloquear origens que não estejam na lista.
 
+## Interface React
+
+A interface inicial fica em frontend/ e inclui cardápio visitante, sacola, conta/login, checkout, acompanhamento de pedidos e Back Office. O endereço padrão da API é http://localhost:8080; para outra origem, defina VITE_API_URL. O Back Office permite escolher fotos para pratos, pesquisar clientes, filtrar pedidos e vendas por hoje, semana, mês ou intervalo personalizado de data e hora, e atualiza os pedidos a cada 8 segundos enquanto a tela está aberta. O botão “Atualizar” continua disponível como alternativa manual. A sacola indica se o visitante precisa entrar/criar conta antes de finalizar.
+
+Inicie o backend em um terminal com: cd backend; npm install; node index.js
+
+Inicie o React em outro terminal com: cd frontend; npm install; npm run dev
+
+Abra http://localhost:5173. A API deve estar ativa para carregar o cardápio e salvar alterações. Visitantes podem ver o cardápio e montar a sacola. Para finalizar ou abrir “Meus pedidos”, devem entrar com código de cliente e senha ou criar uma conta; o novo código é exibido após o cadastro. Clientes antigos que ainda não possuem senha precisam criar uma nova conta para usar esse login. O painel Back Office não tem login de equipe.
+
 ## Modelo de dados
 
 O banco segue as quatro tabelas da apresentação. O Sequelize também cria os campos `id`, `createdAt` e `updatedAt` para cada modelo.
 
 | Tabela / modelo | Campos no servidor | Finalidade |
 |---|---|---|
-| `Cliente` | `id`, `nome`, `telefone`, `endereco`, datas de criação e alteração | Dados de contato e endereço de entrega salvo do cliente. |
-| `Prato` | `id`, `nome`, `descricao`, `preco`, `disponivel`, datas de criação e alteração | Pratos do cardápio e indicação de disponibilidade para pedidos. |
+| `Cliente` | `id`, `codigo_cliente`, `nome`, `telefone`, `endereco`, `senha_hash`, datas de criação e alteração | Dados do cliente e hash da senha (nunca a senha original). |
+| `Prato` | `id`, `nome`, `descricao`, `categoria`, `preco`, `imagem_url`, `destaque`, `disponivel`, datas de criação e alteração | Pratos do cardápio, categoria, destaque da casa e disponibilidade para pedidos. |
 | `Pedido` | `id`, `data_hora`, `status`, `tipo_entrega`, `id_cliente`, datas de criação e alteração | Cliente, horário, andamento e escolha entre entrega e retirada. |
 | `ItemPedido` | `id`, `id_pedido`, `id_prato`, `quantidade`, datas de criação e alteração | Relação entre pedidos e pratos, com a quantidade solicitada. |
 
@@ -79,9 +92,11 @@ erDiagram
     PRATO ||--o{ ITEM_PEDIDO : aparece_em
     CLIENTE {
         int id PK
+        string codigo_cliente UK
         string nome
         string telefone
         string endereco
+        string senha_hash
     }
     PEDIDO {
         int id PK
@@ -100,7 +115,9 @@ erDiagram
         int id PK
         string nome
         string descricao
+        string categoria
         float preco
+        string imagem_url
         boolean disponivel
     }
 ```
@@ -121,7 +138,7 @@ erDiagram
 
 ## Referência da API
 
-Todas as rotas recebem e retornam JSON, exceto quando indicado. Atualmente, **nenhuma rota é protegida por login ou função de usuário**. A coluna “uso previsto” indica a finalidade, não uma regra de acesso aplicada pelo código.
+As rotas recebem e retornam JSON, salvo o upload de imagem. As rotas de conta e pedido usam o cabeçalho `Authorization: Bearer <token>`. As rotas do Back Office continuam sem controle de acesso.
 
 ### Verificação do servidor
 
@@ -129,15 +146,27 @@ Todas as rotas recebem e retornam JSON, exceto quando indicado. Atualmente, **ne
 |---|---|---|---|
 | `GET` | `/` | Verificar se o processo da API responde. | Retorna uma mensagem em texto simples. |
 
+### Conta do cliente
+
+| Método | Caminho | Uso previsto | Observações |
+|---|---|---|---|
+| `POST` | `/auth/register` | Cliente cria uma conta. | JSON com `nome`, `telefone`, `endereco`, `senha` (mínimo 8 caracteres); retorna `cliente` e `token`. |
+| `POST` | `/auth/login` | Cliente entra. | JSON com `codigo_cliente` e `senha`; retorna `cliente` e `token`. |
+| `GET` | `/auth/me` | Consultar a conta autenticada. | Exige token Bearer. |
+| `GET` | `/minha-conta/pedidos` | Ver histórico próprio. | Exige token Bearer; retorna apenas pedidos da sessão. |
+| `PUT` | `/minha-conta` | Atualizar nome, telefone e endereço próprios. | Exige token Bearer. |
+| `DELETE` | `/minha-conta` | Excluir a própria conta. | Exige token; falha se houver pedidos associados. |
+
 ### Pratos (`pratos`)
 
 | Método | Caminho | Uso previsto | Observações |
 |---|---|---|---|
-| `POST` | `/pratos` | BKO: proprietário/equipe cadastra um prato. | Exige `nome` e `preco`; `disponivel` assume `true` por padrão. |
+| `POST` | `/pratos` | BKO: proprietário/equipe cadastra um prato. | Exige `nome` e `preco`; categoria: `Pratos principais`, `Sobremesas` ou `Bebidas`; aceita `imagem_url` e `destaque`. |
 | `GET` | `/pratos` | Visitante consulta o cardápio. | Retorna somente pratos disponíveis. |
+| `GET` | `/pratos/destaques` | Visitante vê os destaques da casa. | Retorna até cinco pratos disponíveis, priorizando os marcados como destaque e depois os mais vendidos em pedidos não cancelados. |
 | `GET` | `/pratos?todos=true` | BKO: proprietário/equipe consulta todos os pratos. | Inclui pratos indisponíveis; ainda não exige permissão. |
 | `GET` | `/pratos/:id` | BKO consulta um prato pelo identificador para exibição ou edição. | Retorna `404` quando o prato não existe. |
-| `PUT` | `/pratos/:id` | BKO: proprietário/equipe altera um prato ou sua disponibilidade. | Campos aceitos: `nome`, `descricao`, `preco`, `disponivel`. Para marcar como indisponível, envie `{"disponivel":false}`. |
+| `PUT` | `/pratos/:id` | BKO: proprietário/equipe altera um prato ou sua disponibilidade. | Campos aceitos: `nome`, `descricao`, `categoria`, `preco`, `imagem_url`, `destaque`, `disponivel`. Para marcar como indisponível, envie `{"disponivel":false}`. |
 | `DELETE` | `/pratos/:id` | BKO: proprietário/equipe exclui um prato. | Retorna `409` se houver pedidos relacionados. Para retirá-lo do cardápio sem perder o histórico, altere `disponivel` para `false`. |
 
 Exemplo de dados para cadastrar um prato:
@@ -151,14 +180,27 @@ Exemplo de dados para cadastrar um prato:
 }
 ```
 
+## Códigos únicos de clientes e fotos dos pratos
+
+Cada cadastro de cliente recebe um código público no formato MESA-XXXXXXXX. O banco mantém o ID numérico interno para relacionamentos; as rotas de cliente e a criação de pedidos aceitam o código público, e continuam aceitando IDs numéricos antigos para compatibilidade. Cadastros existentes recebem um código ao iniciar a API.
+
+No Back Office, a foto escolhida para um prato é enviada como JPEG, PNG ou WebP, otimizada no navegador e salva em backend/uploads. O registro do prato guarda o caminho da imagem. O upload aceita arquivos de até 5 MB pelo endpoint POST /uploads/pratos; a resposta fornece imagem_url para salvar no prato. As fotos são servidas em /uploads e a pasta não é adicionada ao Git.
+
+### Upload de imagens
+
+| Método | Caminho | Uso previsto | Observações |
+|---|---|---|---|
+| POST | /uploads/pratos | BKO envia a foto do prato antes de salvar ou atualizar o prato. | Corpo binário com Content-Type image/jpeg, image/png ou image/webp; limite de 5 MB. Retorna imagem_url para incluir em POST /pratos ou PUT /pratos/:id. |
+
 ### Clientes (`clientes`)
 
 | Método | Caminho | Uso previsto | Observações |
 |---|---|---|---|
-| `POST` | `/clientes` | Criar o registro do cliente antes do pedido. | Exige `nome`, `telefone` e `endereco`; retorna o `id` gerado. |
+| `POST` | `/clientes` | Compatibilidade com cadastro legado. | Cria apenas dados de contato e código; a interface atual usa `/auth/register` para criar contas com senha. |
 | `GET` | `/clientes` | Proprietário/equipe consulta clientes. | Retorna todos os registros; a rota ainda é pública. |
-| `GET` | `/clientes/:id` | Consultar os dados de um cliente. | Retorna `404` se o cadastro não existir. |
-| `GET` | `/clientes/:id/pedidos` | Cliente acompanha seus pedidos. | Filtra pelo identificador enviado e inclui itens e pratos; não confirma a identidade do solicitante. |
+| `GET` | `/clientes/:id` | Consultar os dados de um cliente. | Aceita `codigo_cliente` ou ID numérico legado; retorna `404` se o cadastro não existir. |
+| `GET` | `/clientes/:id/pedidos` | Cliente consulta seu histórico legado. | Exige token Bearer correspondente ao cliente da rota. |
+| `GET` | `/backoffice/clientes/:id/pedidos` | BKO consulta histórico por cliente. | Rota administrativa ainda pública; deve ser protegida antes de implantação. |
 | `PUT` | `/clientes/:id` | Alterar contato ou endereço do cliente. | Campos aceitos: `nome`, `telefone`, `endereco`. |
 | `DELETE` | `/clientes/:id` | Excluir um cadastro de cliente. | Não permite a exclusão quando há pedidos relacionados. |
 
@@ -166,17 +208,17 @@ Exemplo de dados para cadastrar um prato:
 
 | Método | Caminho | Uso previsto | Observações |
 |---|---|---|---|
-| `POST` | `/pedidos` | Cliente envia um pedido. | Cria pedido e itens em uma transação. Exige cliente existente, ao menos um item, pratos disponíveis, quantidades inteiras positivas e modalidade de entrega ou retirada. |
+| `POST` | `/pedidos` | Cliente autenticado envia um pedido. | Exige token Bearer da própria conta, ao menos um item, pratos disponíveis, quantidades inteiras positivas e modalidade de entrega ou retirada. |
 | `GET` | `/pedidos` | Proprietário/equipe consulta pedidos recebidos. | Inclui cliente, pratos e quantidades; ainda é uma rota pública. |
 | `GET` | `/pedidos/:id` | Consultar um pedido. | Inclui cliente, itens e pratos. |
 | `PUT` | `/pedidos/:id` | Proprietário/equipe atualiza o andamento. | O corpo precisa conter um `status` aceito. Esta rota não altera outros campos do pedido. |
-| `DELETE` | `/pedidos/:id` | Cancelar um pedido. | Define o status `cancelado`; não apaga o pedido nem seus itens. |
+| `DELETE` | `/pedidos/:id` | Cliente cancela o próprio pedido. | Exige token da conta dona do pedido; define `cancelado` sem apagar dados. |
 
 Exemplo de pedido:
 
 ```json
 {
-  "id_cliente": 1,
+  "id_cliente": "MESA-8F32A19C",
   "tipo_entrega": "entrega",
   "itens": [
     { "id_prato": 2, "quantidade": 2 },
@@ -240,18 +282,18 @@ Por padrão, a API fica disponível em `http://localhost:8080`. Para usar outra 
 PORT=8081 node index.js
 ```
 
-O banco de dados será criado em `backend/restaurante.db`. O arquivo `.gitignore` exclui arquivos `.db` para evitar que dados locais de clientes e pedidos sejam enviados ao repositório sem querer. O Sequelize cria tabelas ausentes ao iniciar, e o servidor adiciona `tipo_entrega` se a tabela `Pedidos` antiga ainda não tiver essa coluna.
+O banco de dados será criado em `backend/restaurante.db`. O arquivo `.gitignore` exclui arquivos `.db`. O Sequelize cria tabelas ausentes ao iniciar e migra campos novos, categorias, destaques, códigos únicos e hashes opcionais de senha em bases existentes. A API inclui cinco pratos ilustrados de Nosso Prato da Casa na primeira inicialização e não os duplica em inicializações futuras. Contas antigas não têm senha; o cliente precisa criar uma nova conta com senha para usar o login (o histórico antigo fica associado ao cadastro antigo).
 
 Ainda não existe uma bateria de testes automatizados. O script `test` em `backend/package.json` é apenas um exemplo provisório.
 
 ## Limites da implementação atual
 
-- As telas React, o carrinho de pedidos, as telas de acesso e o painel Back Office (BKO) aparecem na apresentação, mas não estão incluídos neste repositório. As rotas de gestão de pratos e pedidos são a camada de API para o futuro BKO.
-- Não foram implementados acesso por conta, armazenamento de senhas, sessões, tokens nem permissões entre cliente e equipe.
+- A interface React e o painel Back Office (BKO) estão em frontend/. Ainda não há pagamento, entrega rastreada em tempo real, nem histórico de preços por item do pedido.
+- O login do cliente é simples; contas de equipe e autorização do BKO ainda não foram implementadas. As rotas administrativas permanecem públicas.
 - Não há pagamento, controle de quantidade em estoque, entregador designado, previsão de entrega, notificações por mensagem ou atualização imediata da tela.
 - O acompanhamento do cliente é uma consulta HTTP; a interface precisará consultar novamente a rota para exibir mudanças de status.
 - Os pedidos guardam pratos e quantidades, mas não registram o preço praticado no momento da compra nem o valor total. Se o preço do cardápio mudar, a interface poderá exibir outro valor ao consultar o pedido, a menos que o preço seja salvo no pedido ou o modelo do banco seja ampliado.
-- Como ainda não há autenticação, não exponha a API publicamente com dados reais de clientes.
+- Configure `TOKEN_SECRET` com valor longo, único e imprevisível antes de usar contas fora do ambiente local. Não exponha as rotas do Back Office publicamente enquanto não houver autenticação de equipe.
 
 ## Observação sobre a execução
 
