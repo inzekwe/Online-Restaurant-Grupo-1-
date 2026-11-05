@@ -87,6 +87,10 @@ const Pedido = sequelize.define("Pedido", {
 const ItemPedido = sequelize.define("ItemPedido", {
     quantidade: { type: DataTypes.INTEGER, allowNull: false, validate: { min: 1 } }
 })
+const AppConfig = sequelize.define("AppConfig", {
+    key: { type: DataTypes.STRING, primaryKey: true },
+    value: { type: DataTypes.STRING, allowNull: false }
+})
 
 // A customer can place many orders. Orders with customer history cannot be orphaned.
 // Um cliente pode fazer vários pedidos. O histórico não permite pedidos sem cliente relacionado.
@@ -112,6 +116,13 @@ const CURATED_FEATURED_DISHES = [
     { nome: "Salmão do Mercado", descricao: "Salmão selado, purê de batata-baroa, legumes tostados e molho cítrico de ervas.", categoria: "Pratos principais", preco: 58.90, imagem_url: "images/destaque-salmao-mercado.png" },
     { nome: "Lasanha da Nonna", descricao: "Camadas de massa fresca, ragu de tomate e carne, béchamel leve e queijo gratinado.", categoria: "Pratos principais", preco: 44.90, imagem_url: "images/destaque-lasanha-nonna.png" },
     { nome: "Pudim de Leite com Baunilha", descricao: "Pudim artesanal de baunilha com calda de caramelo âmbar e frutas vermelhas.", categoria: "Sobremesas", preco: 18.90, imagem_url: "images/destaque-pudim-baunilha.png" }
+]
+const CURATED_MENU_EXTRAS = [
+    { nome: "Bolo de Chocolate da Casa", descricao: "Fatia de bolo úmido com ganache de chocolate meio amargo e frutas vermelhas.", categoria: "Sobremesas", preco: 19.90, imagem_url: "images/sobremesa-bolo-chocolate.png" },
+    { nome: "Torta de Pera e Amêndoas", descricao: "Massa amanteigada, peras assadas, creme de baunilha e amêndoas tostadas.", categoria: "Sobremesas", preco: 17.90, imagem_url: "images/sobremesa-torta-pera.png" },
+    { nome: "Chá Gelado de Hibisco", descricao: "Hibisco artesanal com frutas vermelhas, servido gelado com hortelã.", categoria: "Bebidas", preco: 12.90, imagem_url: "images/bebida-cha-hibisco.png" },
+    { nome: "Suco de Laranja Natural", descricao: "Laranjas frescas espremidas na hora, sem adição de açúcar.", categoria: "Bebidas", preco: 10.90, imagem_url: "images/bebida-suco-laranja.png" },
+    { nome: "Café e Cappuccino", descricao: "Espresso encorpado ou cappuccino cremoso com leite vaporizado.", categoria: "Bebidas", preco: 8.90, imagem_url: "images/bebida-cafe-cappuccino.png" }
 ]
 // Shared joins used to return a complete order with its customer, dishes, and quantities.
 // Relacionamentos compartilhados para retornar o pedido com cliente, pratos e quantidades.
@@ -305,7 +316,18 @@ app.delete("/pratos/:id", async (req, res) => {
     if (!id) return res.status(400).json({ error: "ID de prato inválido" })
     const prato = await Prato.findByPk(id)
     if (!prato) return sendNotFound(res, "Prato")
-    await prato.destroy()
+    const linkedOrders = await ItemPedido.count({ where: { id_prato: id } })
+    if (linkedOrders > 0) {
+        return res.status(409).json({ error: "Este prato faz parte do histórico de pedidos e não pode ser excluído. Marque-o como indisponível para removê-lo do cardápio." })
+    }
+    try {
+        await prato.destroy()
+    } catch (err) {
+        if (err.name === "SequelizeForeignKeyConstraintError") {
+            return res.status(409).json({ error: "Este prato está vinculado a um pedido. Marque-o como indisponível para removê-lo do cardápio." })
+        }
+        throw err
+    }
     return res.json({ message: `Prato ${id} excluído` })
 })
 
@@ -681,13 +703,25 @@ async function startServer() {
         const pratosAntigos = await Prato.findAll()
         for (const prato of pratosAntigos) await prato.update({ categoria: inferDishCategory(prato.nome) })
     }
-    for (const dishData of CURATED_FEATURED_DISHES) {
-        const existing = await Prato.findOne({ where: { nome: dishData.nome } })
-        if (existing) {
-            await existing.update({ ...dishData, preco: existing.preco, destaque: true, disponivel: true })
-        } else {
+    // Seed the initial feature dishes once. A persistent marker prevents deleted
+    // demo dishes from returning even if the Back Office later empties the menu.
+    if (!await AppConfig.findByPk("featured-menu-v1")) {
+      if (await Prato.count() === 0) {
+        for (const dishData of CURATED_FEATURED_DISHES) {
             await Prato.create({ ...dishData, destaque: true, disponivel: true })
         }
+      }
+      await AppConfig.create({ key: "featured-menu-v1", value: "seeded" })
+    }
+    // Add the dessert and drink examples once, including for existing installations.
+    // The marker keeps Back Office deletions permanent across future server restarts.
+    if (!await AppConfig.findByPk("menu-extras-v1")) {
+        for (const dishData of CURATED_MENU_EXTRAS) {
+            if (!await Prato.findOne({ where: { nome: dishData.nome } })) {
+                await Prato.create({ ...dishData, destaque: false, disponivel: true })
+            }
+        }
+        await AppConfig.create({ key: "menu-extras-v1", value: "seeded" })
     }
     await fs.mkdir(UPLOADS_DIR, { recursive: true })
     const pedidoColumns = await queryInterface.describeTable(Pedido.getTableName())

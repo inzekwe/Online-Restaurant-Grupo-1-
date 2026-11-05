@@ -282,7 +282,7 @@ Por padrão, a API fica disponível em `http://localhost:8080`. Para usar outra 
 PORT=8081 node index.js
 ```
 
-O banco de dados será criado em `backend/restaurante.db`. O arquivo `.gitignore` exclui arquivos `.db`. O Sequelize cria tabelas ausentes ao iniciar e migra campos novos, categorias, destaques, códigos únicos e hashes opcionais de senha em bases existentes. A API inclui cinco pratos ilustrados de Nosso Prato da Casa na primeira inicialização e não os duplica em inicializações futuras. Contas antigas não têm senha; o cliente precisa criar uma nova conta com senha para usar o login (o histórico antigo fica associado ao cadastro antigo).
+O banco de dados será criado em `backend/restaurante.db`. O arquivo `.gitignore` exclui arquivos `.db`. O Sequelize cria tabelas ausentes ao iniciar e migra campos novos, categorias, destaques, códigos únicos e hashes opcionais de senha em bases existentes. Na inicialização, o sistema adiciona uma vez cinco pratos de destaque e exemplos de sobremesas e bebidas; itens excluídos pelo Back Office não voltam ao reiniciar o servidor. Um prato ligado ao histórico de pedidos não pode ser apagado: marque-o como indisponível. Contas antigas não têm senha; o cliente precisa criar uma nova conta com senha para usar o login (o histórico antigo fica associado ao cadastro antigo).
 
 Ainda não existe uma bateria de testes automatizados. O script `test` em `backend/package.json` é apenas um exemplo provisório.
 
